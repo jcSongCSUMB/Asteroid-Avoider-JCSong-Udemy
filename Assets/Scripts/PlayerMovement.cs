@@ -9,6 +9,7 @@ public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] private float forceMagnitude;
     [SerializeField] private float maxVelocity;
+    [SerializeField] private float rotationSpeed;
     
     private Rigidbody playerRigidbody;
     private Camera mainCamera;
@@ -28,6 +29,23 @@ public class PlayerMovement : MonoBehaviour
     }
 
     void Update()
+    {
+        ProcessInput();
+
+        KeepPlayerOnScreen();
+
+        RotateToFaceVelocity();
+    }
+
+    void FixedUpdate()
+    {
+        if (movementDirection == Vector3.zero) { return; }
+        
+        playerRigidbody.AddForce(movementDirection * forceMagnitude, ForceMode.Force);
+        playerRigidbody.linearVelocity = Vector3.ClampMagnitude(playerRigidbody.linearVelocity, maxVelocity);
+    }
+
+    private void ProcessInput()
     {
         if (Touch.activeTouches.Count > 0)
         {
@@ -52,12 +70,46 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    void FixedUpdate()
+    private void KeepPlayerOnScreen()
     {
-        if (movementDirection == Vector3.zero) { return; }
+        Vector3 viewportPosition = mainCamera.WorldToViewportPoint(transform.position);
+
+        if (viewportPosition.x > 1f)
+        {
+            viewportPosition.x = 0f + 0.1f;
+        }
+        else if (viewportPosition.x < 0f)
+        {
+            viewportPosition.x = 1f - 0.1f;
+        }
+
+        if (viewportPosition.y > 1f)
+        {
+            viewportPosition.y = 0f + 0.1f;
+        }
+        else if (viewportPosition.y < 0f)
+        {
+            viewportPosition.y = 1f - 0.1f;
+        }
+
+        Vector3 wrappedWorldPosition = mainCamera.ViewportToWorldPoint(
+            new Vector3(viewportPosition.x, viewportPosition.y, viewportPosition.z)
+        );
+
+        transform.position = new Vector3(
+            wrappedWorldPosition.x,
+            wrappedWorldPosition.y,
+            transform.position.z
+        );
+    }
+
+    private void RotateToFaceVelocity()
+    {
+        if (playerRigidbody.linearVelocity == Vector3.zero) { return; }
+
+        Quaternion targetRotation = Quaternion.LookRotation(playerRigidbody.linearVelocity, Vector3.back);
         
-        playerRigidbody.AddForce(movementDirection * forceMagnitude, ForceMode.Force);
-        playerRigidbody.linearVelocity = Vector3.ClampMagnitude(playerRigidbody.linearVelocity, maxVelocity);
+        transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
     }
 
     void OnDisable()
