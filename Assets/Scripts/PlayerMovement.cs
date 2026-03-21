@@ -7,7 +7,13 @@ using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 public class PlayerMovement : MonoBehaviour
 {
+    [SerializeField] private float forceMagnitude;
+    [SerializeField] private float maxVelocity;
+    
+    private Rigidbody playerRigidbody;
     private Camera mainCamera;
+    
+    private Vector3 movementDirection;
 
     void OnEnable()
     {
@@ -16,6 +22,8 @@ public class PlayerMovement : MonoBehaviour
 
     void Start()
     {
+        playerRigidbody = GetComponent<Rigidbody>();
+        
         mainCamera = Camera.main;
     }
 
@@ -32,8 +40,24 @@ public class PlayerMovement : MonoBehaviour
             Vector3 screenPosWithDepth = new Vector3(screenPos.x, screenPos.y, 10f);
             Vector3 worldPosition = mainCamera.ScreenToWorldPoint(screenPosWithDepth);
             
-            Debug.Log($"[Touch Test] Screen Pos: {screenPos} | World Pos: {worldPosition}");
+            movementDirection = worldPosition - transform.position;
+            movementDirection.z = 0f;
+            movementDirection.Normalize();
+
+            //Debug.Log($"[Touch Test] Screen Pos: {screenPos} | World Pos: {worldPosition}");
         }
+        else
+        {
+            movementDirection = Vector3.zero;
+        }
+    }
+
+    void FixedUpdate()
+    {
+        if (movementDirection == Vector3.zero) { return; }
+        
+        playerRigidbody.AddForce(movementDirection * forceMagnitude, ForceMode.Force);
+        playerRigidbody.linearVelocity = Vector3.ClampMagnitude(playerRigidbody.linearVelocity, maxVelocity);
     }
 
     void OnDisable()
